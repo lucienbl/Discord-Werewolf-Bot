@@ -19,7 +19,7 @@ import Redis from 'ioredis';
 import EventEmitter = require("events");
 import { Guild, User as DiscordUser } from "discord.js";
 import { Logger } from '../utils';
-import { createRedisInstance, RedisAction } from '../db';
+import {createRedisInstance, RedisAction, redisActionKeys} from '../db';
 import GameStateSocketHandler from './GameStateSocketHandler';
 import GameStateDb from './GameStateDb';
 import { Player, User } from "../core";
@@ -51,7 +51,15 @@ class GameSocketDispatcher {
     // @ts-ignore
     _handleRedisMessage = (channel: string, json: string) => {
         const { action, payload } = RedisAction.fromString(json);
-        this._socketHandlers.forEach((handler: SocketHandler) => handler.handleRedisMessage(action, payload));
+
+        if (action === redisActionKeys.GAME_OVER) {
+            this._cleanupRedis().then(() => {
+                this._socketHandlers = undefined;
+                this._localEmitter = undefined;
+            });
+        } else {
+            this._socketHandlers.forEach((handler: SocketHandler) => handler.handleRedisMessage(action, payload));
+        }
     };
 
     setupClientStack = async (): Promise<void> => {
@@ -75,6 +83,13 @@ class GameSocketDispatcher {
             localEmitterListeners += handler.getNumberOfLocalListeners();
         });
         this._localEmitter.setMaxListeners(localEmitterListeners);
+    };
+
+    _cleanupRedis = async (): Promise<void> => {
+        if (!this._redisSubscriber) return;
+        await this._redisSubscriber.unsubscribe();
+        this._redisSubscriber.disconnect();
+        this._redisSubscriber = undefined;
     };
 
 }

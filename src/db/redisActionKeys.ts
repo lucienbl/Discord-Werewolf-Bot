@@ -20,3 +20,4 @@ export const START_GAME_COUNTDOWN = 'start-game-countdown';
 export const CHANGE_VOTING = 'change-voting';
 export const CHAT_MESSAGE_ADDED = 'chat-message-added';
 export const CHAT_GLOBAL_SYSTEM_MESSAGE_ADDED = 'chat-global-system-message-added';
+export const GAME_OVER = 'game-over';

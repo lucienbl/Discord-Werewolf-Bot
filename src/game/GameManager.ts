@@ -217,6 +217,11 @@ class GameManager {
 
         this._handleSendGlobalSystemMessage(embed.toObject());
 
+        this._sendRedisAction(new RedisAction({
+            action: redisActionKeys.GAME_OVER,
+            payload: { },
+        }));
+
         await this._cleanupRedis();
 
         return true;
