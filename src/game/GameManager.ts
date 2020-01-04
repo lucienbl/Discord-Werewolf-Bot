@@ -54,15 +54,15 @@ class GameManager {
 
         this._guild = msg.guild;
 
-        const addedPlayers = [];
+        const addedPlayerIds = [];
 
         msg.reactions.forEach((reaction: MessageReaction) => {
             reaction.users.forEach(async (user: User) => {
-                if (!user.bot) {
+                if (!user.bot && !addedPlayerIds.includes(user.id)) {
                     let role = Roles.WEREWOLF;
-                    if ((addedPlayers.length + 1) % 2 === 0) role = Roles.SEER;
+                    if ((addedPlayerIds.length + 1) % 2 === 0) role = Roles.SEER;
                     const player = new Player(user.id, reaction.emoji.toString(), role, false);
-                    addedPlayers.push(player);
+                    addedPlayerIds.push(player.userId);
                     await new GameSocketDispatcher(user, player, msg.guild, this._redis, this._gameId).setupClientStack();
                     await this._playerDb.set(player);
                 }
