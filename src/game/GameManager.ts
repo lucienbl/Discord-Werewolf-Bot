@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Collection, Guild, GuildMember, Message, MessageReaction, RichEmbed, User } from "discord.js";
+import { Guild, GuildMember, Message, MessageReaction, RichEmbed, User } from "discord.js";
 import { Embed, Player, Roles } from "../core";
 import { Handler } from "../handlers";
 import { Logger, TimeUtils } from "../utils";
@@ -24,6 +24,7 @@ import { createRedisInstance, RedisAction, redisActionKeys } from "../db";
 import PlayerDb from "./PlayerDb";
 import * as gamePhases from "./gamePhases";
 import * as Config from "../config";
+import { Teams } from "../core";
 
 class GameManager {
 
@@ -56,17 +57,15 @@ class GameManager {
         const addedPlayers = [];
 
         msg.reactions.forEach((reaction: MessageReaction) => {
-            reaction.fetchUsers().then((players: Collection<string, User>) => {
-                players.forEach((user: User) => {
-                    if (!user.bot) {
-                        let role = Roles.WEREWOLF;
-                        if ((addedPlayers.length + 1) % 2 === 0) role = Roles.SEER;
-                        const player = new Player(user.id, reaction.emoji.toString(), role, false);
-                        addedPlayers.push(player);
-                        new GameSocketDispatcher(user, player, msg.guild, this._redis, this._gameId).setupClientStack();
-                        this._playerDb.set(player);
-                    }
-                });
+            reaction.users.forEach(async (user: User) => {
+                if (!user.bot) {
+                    let role = Roles.WEREWOLF;
+                    if ((addedPlayers.length + 1) % 2 === 0) role = Roles.SEER;
+                    const player = new Player(user.id, reaction.emoji.toString(), role, false);
+                    addedPlayers.push(player);
+                    await new GameSocketDispatcher(user, player, msg.guild, this._redis, this._gameId).setupClientStack();
+                    await this._playerDb.set(player);
+                }
             });
         });
 
@@ -97,14 +96,18 @@ class GameManager {
                 payload: { gamePhase: gamePhases.GAME_NIGHT, duration: Config.GAME_NIGHT_DURATION },
             }));
             await TimeUtils.timeout(Config.GAME_NIGHT_DURATION);
+            if (await this._checkForWinners()) break;
             await this._handleDayDiscussionStart();
 
+            if (await this._checkForWinners()) break;
             this._sendRedisAction(new RedisAction({
                 action: redisActionKeys.GAME_PHASE_CHANGED,
                 payload: { gamePhase: gamePhases.GAME_DAY_DISCUSSION, duration: Config.GAME_DAY_DISCUSSION_DURATION },
             }));
             await TimeUtils.timeout(Config.GAME_DAY_DISCUSSION_DURATION);
+            if (await this._checkForWinners()) break;
             await this._handleNightStart();
+            if (await this._checkForWinners()) break;
         }
 
         this._cleanupRedis();
@@ -153,6 +156,39 @@ class GameManager {
         this._guild.client.removeAllListeners("messageReactionAdd");
     };
 
+    _checkForWinners = async () => {
+        const players: [Player] = await this._playerDb.getAll();
+
+        const alivePlayers = [];
+        const aliveWerewolves = [];
+        const aliveVillagers = [];
+
+        players.forEach((player: Player) => {
+           if (!player.isDead) {
+               alivePlayers.push(player);
+               if (player.role.team === Teams.WEREWOLVES) aliveWerewolves.push(player);
+               if (player.role.team === Teams.VILLAGERS) aliveVillagers.push(player);
+           }
+        });
+
+        // werewolves win ?
+        if (aliveWerewolves.length > 0 && aliveVillagers.length === 0) {
+            return this._handleEndGame(Teams.WEREWOLVES);
+        }
+
+        // villagers win ?
+        if (aliveWerewolves.length === 0 && aliveVillagers.length > 0) {
+            return this._handleEndGame(Teams.VILLAGERS);
+        }
+
+        // continue game ?
+        if (alivePlayers.length <= 0) {
+            return this._handleEndGame();
+        } else {
+            return false;
+        }
+    };
+
     _getUserById = (userId: string): User => <User>this._guild.members.find((_member: GuildMember, id: string) => id == userId).user;
 
     _addPlayerMap = async (embed: RichEmbed): Promise<RichEmbed> => {
@@ -166,6 +202,24 @@ class GameManager {
         });
 
         return embed;
+    };
+
+    _handleEndGame = async (winner?: string) => {
+        const description = winner === Teams.WEREWOLVES ? "The winners are the Werewolves!" : (winner === Teams.VILLAGERS ? "The winners are the villagers!" : "Tight!");
+
+        let embed = new Embed()
+            .setAuthor("Game Over!")
+            .setDescription(description)
+            .setThumbnail("https://vignette.wikia.nocookie.net/werewolfonlinebr/images/b/ba/D3F2E3AD-75A5-44B6-ADD8-842283EF1C87.png/revision/latest?cb=20190404203706&path-prefix=pt-br")
+            .setImage("https://lh3.googleusercontent.com/AEum6GhOj11KXX9w1R2LIiVODHLGLGib-EUncl_89R8hFxXIVvmavibRCsVjXaudRw");
+
+        embed = <Embed>await this._addPlayerMap(embed);
+
+        this._handleSendGlobalSystemMessage(embed.toObject());
+
+        await this._cleanupRedis();
+
+        return true;
     };
 
     _handleSendGlobalSystemMessage = (embed: any) => {

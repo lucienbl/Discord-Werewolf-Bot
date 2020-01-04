@@ -58,7 +58,8 @@ class Player {
             role: {
                 name: this._role.name,
                 title: this._role.title,
-                icon: this._role.icon
+                icon: this._role.icon,
+                team: this._role.team,
             },
             isDead: this._isDead,
         };

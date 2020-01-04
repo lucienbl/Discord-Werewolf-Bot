@@ -19,11 +19,13 @@ class Role {
 
     _name: string;
     _title: string;
+    _team: string;
     _icon: string;
 
-    constructor(name: string, title: string, icon: string) {
+    constructor(name: string, title: string, team: string, icon: string) {
         this._name = name;
         this._title = title;
+        this._team = team;
         this._icon = icon;
     }
 
@@ -33,6 +35,10 @@ class Role {
 
     get title(): string {
         return this._title;
+    }
+
+    get team(): string {
+        return this._team;
     }
 
     get icon(): string {

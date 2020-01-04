@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Lucien Blunk-Lallet
+ * Copyright (c) 2020 Lucien Blunk-Lallet
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,28 +15,5 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Events } from "./Events";
-import MessageDispatcher from "./MessageDispatcher";
-import { LocalEvents } from "./LocalEvents";
-import EventEmitter from "./EventEmitter";
-import { Commands } from "./Commands";
-import User from "./User";
-import Player from "./Player";
-import * as Roles from "./Roles";
-import * as RoleIcons from "./RoleIcons";
-import Embed from "./Embed";
-import * as Teams from "./Teams";
-
-export {
-    Events,
-    MessageDispatcher,
-    LocalEvents,
-    EventEmitter,
-    Commands,
-    User,
-    Player,
-    Roles,
-    RoleIcons,
-    Embed,
-    Teams
-}
+export const WEREWOLVES = "WEREWOLVES";
+export const VILLAGERS = "VILLAGERS";

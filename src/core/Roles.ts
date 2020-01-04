@@ -17,6 +17,7 @@
 
 import * as RoleIcons from "./RoleIcons";
 import Role from "./Role";
+import * as Teams from "./Teams";
 
-export const WEREWOLF = new Role("werewolf", "Werewolf", RoleIcons.WEREWOLF);
-export const SEER = new Role("seer", "Seer", RoleIcons.SEER);
+export const WEREWOLF = new Role("werewolf", "Werewolf", Teams.WEREWOLVES, RoleIcons.WEREWOLF);
+export const SEER = new Role("seer", "Seer", Teams.VILLAGERS, RoleIcons.SEER);
