@@ -19,6 +19,7 @@ import Redis from 'ioredis';
 import Redlock = require("redlock");
 import { redisStoreKeys, } from '../db';
 import * as gamePhases from './gamePhases';
+import Voting from "./Voting";
 
 const MAX_LOCK_ATTEMPTS = 10;
 
@@ -67,15 +68,15 @@ class GameStateDb {
         this._redis.set(redisStoreKeys.gamePhase(this._gameId), gamePhase);
     }
 
-    /*async setVoting(voting: Voting): Promise<void> {
+    async setVoting(voting: Voting): Promise<void> {
         this._redis.set(redisStoreKeys.gameVoting(this._gameId, voting.id), voting.toString());
     }
 
-    async getVoting(votingId: string): Promise<void> {
+    async getVoting(votingId: string): Promise<Voting> {
         const voting = await this._redis.get(redisStoreKeys.gameVoting(this._gameId, votingId));
         if (!voting || voting.length === 0) return new Voting({ id: votingId, votes: {} });
         return Voting.fromString(voting);
-    }*/
+    }
 
     async clearVoting(votingId: string): Promise<void> {
         this._redis.del(redisStoreKeys.gameVoting(this._gameId, votingId));

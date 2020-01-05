@@ -18,10 +18,12 @@
 import Redis from 'ioredis';
 import EventEmitter from 'events';
 import { Player, Roles, User } from '../core';
-import { redisActionKeys } from '../db';
+import { RedisAction, redisActionKeys } from '../db';
 import SocketHandler from './SocketHandler';
-import { Guild, GuildMember, Message, MessageReaction, RichEmbed } from "discord.js";
+import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed } from "discord.js";
 import * as gamePhases from "./gamePhases";
+import * as votingIds from './votingIds';
+import Voting from "./Voting";
 
 class GameStateSocketHandler extends SocketHandler {
 
@@ -38,6 +40,9 @@ class GameStateSocketHandler extends SocketHandler {
 
                 switch (gamePhase) {
                     case gamePhases.GAME_NIGHT: this._handleNightStart();
+                    break;
+
+                    case gamePhases.GAME_DAY_VOTING: this._handleDayVotingStart();
                     break;
                 }
 
@@ -65,21 +70,37 @@ class GameStateSocketHandler extends SocketHandler {
 
             case redisActionKeys.CHANGE_VOTING: {
                 const { voting } = payload;
-                await this._dmChannel.send(voting);
+                const messageEmbed: MessageEmbed = this._actionMessage.embeds[0];
+                messageEmbed.fields = [];
+                let embed = new RichEmbed(messageEmbed);
+                embed = await this._addPlayerMap(embed, voting);
+                await this._actionMessage.edit(embed);
                 break;
             }
         }
     };
 
-    _addPlayerMap = async (embed: RichEmbed): Promise<RichEmbed> => {
+    _addPlayerMap = async (embed: RichEmbed, voting?: any): Promise<RichEmbed> => {
         const players = await this._playerDb.getAll();
-        players.forEach((player: Player) => {
-            embed.addField(
-                player.isDead ? ":skull:" : player.emoji,
-                `${this._getDiscordUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
-                true
-            );
-        });
+
+        if (voting) {
+            const votingObj = Voting.fromString(voting);
+            players.forEach((player: Player) => {
+                embed.addField(
+                    player.isDead ? ":skull:" : player.emoji,
+                    `**(${votingObj.getVotingCount(player.userId)})** ${this._getDiscordUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
+                    true
+                );
+            });
+        } else {
+            players.forEach((player: Player) => {
+                embed.addField(
+                    player.isDead ? ":skull:" : player.emoji,
+                    `${this._getDiscordUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
+                    true
+                );
+            });
+        }
 
         return embed;
     };
@@ -135,7 +156,7 @@ class GameStateSocketHandler extends SocketHandler {
                 const discordUser = this._getDiscordUserById(selectedPlayerList[0].userId);
                 const player = await this._playerDb.getById(selectedPlayerList[0].userId);
                 const user = new User(discordUser, player, this._user.gameId);
-                await this._actionMessage.delete();
+                // await this._actionMessage.delete();
                 this._generateSeparator();
                 callback(user);
             }
@@ -152,7 +173,7 @@ class GameStateSocketHandler extends SocketHandler {
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
                     await this._playerDb.setPlayerSelectedPlayerIds(this._user.id, [user.id]);
-                    await this._dmChannel.send("__**You voted!**__");
+                    await this._dmChannel.send(`__**You voted ${user.username}!**__`);
                 });
             }
             break;
@@ -164,11 +185,38 @@ class GameStateSocketHandler extends SocketHandler {
                     .setDescription(`Select a player to see his role.`);
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
+                    await this._actionMessage.delete();
                     await this._dmChannel.send(`__**${user.username} is a ${user.player.role.title}!**__`);
                 });
             }
             break;
         }
+    };
+
+    _handleDayVotingStart = async () => {
+        let embed = new RichEmbed()
+            .setAuthor("Day Voting Has Started", this._user.player.role.icon)
+            .setDescription(`Select a player to kill today!`);
+
+        this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
+            // await this._dmChannel.send(`__**You voted ${user.username}!**__`);
+            this._handleChangeVoting({
+               votingId: votingIds.VOTING_DAY_VILLAGE,
+               targetPlayerId: user.id
+            });
+        });
+    };
+
+    _handleChangeVoting = async ({ votingId, targetPlayerId }) => {
+        const player = await this._playerDb.getById(this._user.id);
+        if (player.isDead) return;
+        const voting = await this._gameStateDb.getVoting(votingId);
+        voting.setVote(this._user.id, targetPlayerId);
+        await this._gameStateDb.setVoting(voting);
+        this._redis.publish(this._user.gameId, new RedisAction({
+            action: redisActionKeys.CHANGE_VOTING,
+            payload: { voting: voting.toString() }
+        }));
     };
 }
 

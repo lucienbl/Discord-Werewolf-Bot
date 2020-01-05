@@ -25,6 +25,9 @@ import PlayerDb from "./PlayerDb";
 import * as gamePhases from "./gamePhases";
 import * as Config from "../config";
 import { Teams } from "../core";
+import GameStateDb from "./GameStateDb";
+import * as votingIds from './votingIds';
+import Voting from "./Voting";
 
 class GameManager {
 
@@ -33,6 +36,7 @@ class GameManager {
     _gameId: string;
     _redisSubscriber: any;
     _playerDb: PlayerDb;
+    _gameStateDb: GameStateDb;
     _guild: Guild;
 
     constructor(redis: any, gameId: string) {
@@ -40,6 +44,7 @@ class GameManager {
         this._redis = redis;
         this._gameId = gameId;
         this._playerDb = new PlayerDb(redis, gameId);
+        this._gameStateDb = new GameStateDb(redis, gameId);
     }
 
     public initialize = async (message: Message): Promise<void> => {
@@ -91,14 +96,18 @@ class GameManager {
         await TimeUtils.timeout(Config.GAME_START_COUNTDOWN);
 
         for (let i = 0; i < 10; i++) {
+            // NIGHT
+            await this._handleNightStart();
+            if (await this._checkForWinners()) break;
             this._sendRedisAction(new RedisAction({
                 action: redisActionKeys.GAME_PHASE_CHANGED,
                 payload: { gamePhase: gamePhases.GAME_NIGHT, duration: Config.GAME_NIGHT_DURATION },
             }));
             await TimeUtils.timeout(Config.GAME_NIGHT_DURATION);
             if (await this._checkForWinners()) break;
-            await this._handleDayDiscussionStart();
 
+            // DAY DISCUSSION
+            await this._handleDayDiscussionStart();
             if (await this._checkForWinners()) break;
             this._sendRedisAction(new RedisAction({
                 action: redisActionKeys.GAME_PHASE_CHANGED,
@@ -106,7 +115,15 @@ class GameManager {
             }));
             await TimeUtils.timeout(Config.GAME_DAY_DISCUSSION_DURATION);
             if (await this._checkForWinners()) break;
-            await this._handleNightStart();
+
+            // DAY VOTING
+            if (await this._checkForWinners()) break;
+            this._sendRedisAction(new RedisAction({
+                action: redisActionKeys.GAME_PHASE_CHANGED,
+                payload: { gamePhase: gamePhases.GAME_DAY_VOTING, duration: Config.GAME_DAY_VOTING_DURATION },
+            }));
+            await TimeUtils.timeout(Config.GAME_DAY_VOTING_DURATION);
+            await this._handleGameDayVotingFinished();
             if (await this._checkForWinners()) break;
         }
 
@@ -150,6 +167,29 @@ class GameManager {
         embed = <Embed>await this._addPlayerMap(embed);
 
         this._handleSendGlobalSystemMessage(embed.toObject());
+    };
+
+    _handleGameDayVotingFinished = async () => {
+        const voting = await this._gameStateDb.getVoting(votingIds.VOTING_DAY_VILLAGE);
+        const results = voting.getResults();
+        if (!results || !results[0]) return;
+        const targetPlayer = await this._playerDb.getById(results[0].targetPlayerId);
+        targetPlayer.kill();
+        await this._playerDb.set(targetPlayer);
+        await this._gameStateDb.clearVoting(votingIds.VOTING_DAY_VILLAGE);
+
+        let embed = new Embed()
+            .setAuthor("Day Finished!")
+            .setDescription(`The village killed ${this._getUserById(targetPlayer.userId).username} *(${targetPlayer.role.title})*`);
+
+        embed = <Embed>await this._addPlayerMap(embed);
+
+        this._handleSendGlobalSystemMessage(embed.toObject());
+
+        this._sendRedisAction(new RedisAction({
+            action: redisActionKeys.CHANGE_VOTING,
+            payload: { voting: new Voting({ id: votingIds.VOTING_DAY_VILLAGE, votes: {} }).toString() }
+        }));
     };
 
     _handleNightStart = async () => {
