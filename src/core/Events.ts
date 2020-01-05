@@ -17,5 +17,7 @@
 
 export enum Events {
     Ready = "ready",
-    Message = "message"
+    Message = "message",
+    GuildCreate = "guildCreate",
+    GuildDelete = "guildDelete"
 }
