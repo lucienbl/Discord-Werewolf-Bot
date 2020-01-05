@@ -17,11 +17,12 @@
 
 import Redis from 'ioredis';
 import EventEmitter from 'events';
-import { User } from '../core';
+import { Roles, User } from '../core';
 import { redisStoreKeys, redisActionKeys, RedisAction } from '../db';
 import SocketHandler from './SocketHandler';
 import { Message, RichEmbed } from "discord.js";
 import Player from "../core/Player";
+import * as gamePhases from './gamePhases';
 
 class ChatSocketHandler extends SocketHandler {
 
@@ -36,7 +37,31 @@ class ChatSocketHandler extends SocketHandler {
             case redisActionKeys.CHAT_MESSAGE_ADDED: {
                 const { message, authorId, authorUsername } = payload;
                 if (authorId == this._user.id) return;
-                await this._dmChannel.send(`**${authorUsername}:** ${message}`);
+
+                const gamePhase: string = await this._gameStateDb.getGamePhase();
+                const author: Player = await this._playerDb.getById(authorId);
+
+                // if dead
+                if (author.isDead && this._user.player.isDead) {
+                    await this._dmChannel.send(`> *(Dead)* **${authorUsername}:** ${message}`);
+                    return;
+                } else if (author.isDead) {
+                    return;
+                }
+
+                // if ww chat
+                if (this._user.player.role.name === Roles.WEREWOLF.name && author.role.name === Roles.WEREWOLF.name && gamePhase === gamePhases.GAME_NIGHT) {
+                    await this._dmChannel.send(`> *(Werewolf)* **${authorUsername}:** ${message}`);
+                    return;
+                }
+
+                // handle other cases
+                if (gamePhase === gamePhases.GAME_NIGHT) {
+                    return;
+                } else {
+                    await this._dmChannel.send(`**${authorUsername}:** ${message}`);
+                    return;
+                }
                 break;
             }
 

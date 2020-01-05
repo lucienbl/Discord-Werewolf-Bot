@@ -117,6 +117,7 @@ class GameManager {
             if (await this._checkForWinners()) break;
 
             // DAY VOTING
+            await this._handleDayVotingStart();
             if (await this._checkForWinners()) break;
             this._sendRedisAction(new RedisAction({
                 action: redisActionKeys.GAME_PHASE_CHANGED,
@@ -132,6 +133,8 @@ class GameManager {
 
     _handleDayDiscussionStart = async () => {
         this._guild.client.removeAllListeners("messageReactionAdd");
+
+        await this._gameStateDb.setGamePhase(gamePhases.GAME_DAY_DISCUSSION);
 
         const players: [Player] = await this._playerDb.getAll();
 
@@ -169,6 +172,10 @@ class GameManager {
         this._handleSendGlobalSystemMessage(embed.toObject());
     };
 
+    _handleDayVotingStart = async () => {
+        await this._gameStateDb.setGamePhase(gamePhases.GAME_DAY_VOTING);
+    };
+
     _handleGameDayVotingFinished = async () => {
         const voting = await this._gameStateDb.getVoting(votingIds.VOTING_DAY_VILLAGE);
         const results = voting.getResults();
@@ -194,6 +201,7 @@ class GameManager {
 
     _handleNightStart = async () => {
         this._guild.client.removeAllListeners("messageReactionAdd");
+        await this._gameStateDb.setGamePhase(gamePhases.GAME_NIGHT);
     };
 
     _checkForWinners = async () => {
