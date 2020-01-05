@@ -20,7 +20,7 @@ import * as redisStoreKeys from './redisStoreKeys';
 import * as redisActionKeys from './redisActionKeys';
 import RedisAction from './RedisAction';
 
-const createRedisInstance = (): Redis => new Redis(process.env.REDIS_ENDPOINT);
+const createRedisInstance = (): Redis => new Redis(process.env.REDIS_URL);
 
 export {
     redisStoreKeys,
