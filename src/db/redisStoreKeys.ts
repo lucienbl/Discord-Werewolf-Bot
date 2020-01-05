@@ -24,6 +24,5 @@ export const gamePhase = (gameId: string) => `d-game:${gameId}:phase`;
 export const gamePlayers = (gameId: string) => `d-game:${gameId}:players`;
 export const gameChatMessages = (gameId: string) => `d-game:${gameId}:chat`;
 export const gameFinishedAwards = (gameId: string) => `d-game:${gameId}:game-finished-awards`;
-export const gameTotalCityMoney = (gameId: string) => `d-game:${gameId}:total-city-money`;
 export const gameVoting = (gameId: string, votingId: string) => `d-game:${gameId}:voting:${votingId}`;
 export const playerSelectedPlayerIds = (playerId: string) => `d-player:${playerId}:selected-player-ids`;

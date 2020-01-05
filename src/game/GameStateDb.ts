@@ -67,10 +67,6 @@ class GameStateDb {
         this._redis.set(redisStoreKeys.gamePhase(this._gameId), gamePhase);
     }
 
-    async setTotalCityMoney(amount: number): Promise<void> {
-        this._redis.set(redisStoreKeys.gameTotalCityMoney(this._gameId), amount);
-    }
-
     /*async setVoting(voting: Voting): Promise<void> {
         this._redis.set(redisStoreKeys.gameVoting(this._gameId, voting.id), voting.toString());
     }
@@ -83,10 +79,6 @@ class GameStateDb {
 
     async clearVoting(votingId: string): Promise<void> {
         this._redis.del(redisStoreKeys.gameVoting(this._gameId, votingId));
-    }
-
-    async getTotalCityMoney(): Promise<number> {
-        return (await this._redis.get(redisStoreKeys.gameTotalCityMoney(this._gameId))) || 0;
     }
 
 }
