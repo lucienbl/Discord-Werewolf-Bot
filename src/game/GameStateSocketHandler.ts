@@ -145,7 +145,7 @@ class GameStateSocketHandler extends SocketHandler {
         const players = await this._playerDb.getAll();
         const msg: Message = await this._sendActionMessage(embed);
         for (const player of players) {
-            if (!player.isDead) {
+            if (!player.isDead && player.userId !== this._user.id) {
                 await msg.react(player.emoji);
             }
         }
