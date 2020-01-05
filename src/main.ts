@@ -29,7 +29,10 @@ const redis = createRedisInstance();
 const messageDispatcher = new MessageDispatcher(redis);
 
 // setup listeners
-client.on(Events.Ready, () => messageDispatcher.initializeClientStack());
+client.on(Events.Ready, async () => {
+  messageDispatcher.initializeClientStack();
+  await client.user.setActivity(` ${client.guilds.size} guilds. Support: https://discord.gg/cBPZmVn`, {type: 'WATCHING'})
+});
 client.on(Events.Message, (message: Message) => messageDispatcher.dispatch(message));
 
 // login client
