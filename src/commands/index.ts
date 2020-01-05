@@ -18,9 +18,11 @@
 import Command from "./Command";
 import HelpCommand from "./HelpCommand";
 import StartGameCommand from "./StartGameCommand";
+import PingCommand from "./PingCommand";
 
 export {
     Command,
     HelpCommand,
-    StartGameCommand
+    StartGameCommand,
+    PingCommand
 }

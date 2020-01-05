@@ -15,8 +15,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-export enum Commands {
-    HELP = "help",
-    START_GAME = "start game",
-    PING = "ping"
+import { Command } from "./index";
+import { Message } from "discord.js";
+
+class PingCommand extends Command {
+
+    constructor(message: Message, redis: any) {
+        super(message, redis);
+    }
+
+    handle = async (): Promise<any> => {
+        await this._reply(`Current websocket ping: ${this._message.client.ping}ms.`);
+    }
 }
+
+export default PingCommand;

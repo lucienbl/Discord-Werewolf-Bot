@@ -19,7 +19,7 @@ import { Message } from "discord.js";
 import { EventEmitter } from "events";
 import Handler from "./Handler";
 import { Commands, LocalEvents } from "../core";
-import { StartGameCommand, HelpCommand } from "../commands";
+import { StartGameCommand, HelpCommand, PingCommand } from "../commands";
 
 class CommonMessageHandler extends Handler {
 
@@ -37,6 +37,7 @@ class CommonMessageHandler extends Handler {
         switch (text.toLowerCase().substr(1)) {
             case Commands.HELP: return new HelpCommand(message, this._redis).handle();
             case Commands.START_GAME: return new StartGameCommand(message, this._redis).handle();
+            case Commands.PING: return new PingCommand(message, this._redis).handle();
 
             default: return;
         }
