@@ -86,17 +86,19 @@ class GameStateSocketHandler extends SocketHandler {
         if (voting) {
             const votingObj = Voting.fromString(voting);
             players.forEach((player: Player) => {
+                const username: string = this._getDiscordUserById(player.userId).username;
                 embed.addField(
                     player.isDead ? ":skull:" : player.emoji,
-                    `**(${votingObj.getVotingCount(player.userId)})** ${this._getDiscordUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
+                    `**(${votingObj.getVotingCount(player.userId)})** ${username.length > 8 ? `${username.substr(0, 8)}...` : username} ${player.isDead ? `*(${player.role.title})*` : ""}`,
                     true
                 );
             });
         } else {
             players.forEach((player: Player) => {
+                const username: string = this._getDiscordUserById(player.userId).username;
                 embed.addField(
                     player.isDead ? ":skull:" : player.emoji,
-                    `${this._getDiscordUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
+                    `${username.length > 8 ? `${username.substr(0, 8)}...` : username} ${player.isDead ? `*(${player.role.title})*` : ""}`,
                     true
                 );
             });

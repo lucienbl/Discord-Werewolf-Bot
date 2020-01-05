@@ -242,9 +242,10 @@ class GameManager {
     _addPlayerMap = async (embed: RichEmbed): Promise<RichEmbed> => {
         const players = await this._playerDb.getAll();
         players.forEach((player: Player) => {
+            const username: string = this._getUserById(player.userId).username;
             embed.addField(
                 player.isDead ? ":skull:" : player.emoji,
-                `${this._getUserById(player.userId).username} ${player.isDead ? `*${player.role.title}*` : ""}`,
+                `${username.length > 8 ? `${username.substr(0, 8)}...` : username} ${player.isDead ? `*(${player.role.title})*` : ""}`,
                 true
             );
         });
