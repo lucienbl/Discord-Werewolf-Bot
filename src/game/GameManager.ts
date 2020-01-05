@@ -245,7 +245,7 @@ class GameManager {
     };
 
     _handleEndGame = async (winner?: string) => {
-        const description = winner === Teams.WEREWOLVES ? "The winners are the Werewolves!" : (winner === Teams.VILLAGERS ? "The winners are the villagers!" : "Tight!");
+        const description = winner === Teams.WEREWOLVES ? "The winners are the Werewolves!" : (winner === Teams.VILLAGERS ? "The winners are the villagers!" : "Tie!");
 
         let embed = new Embed()
             .setAuthor("Game Over!")
