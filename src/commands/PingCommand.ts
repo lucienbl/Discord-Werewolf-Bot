@@ -25,7 +25,7 @@ class PingCommand extends Command {
     }
 
     handle = async (): Promise<any> => {
-        await this._reply(`Current websocket ping: ${this._message.client.ping}ms.`);
+        await this._reply(`Current websocket ping: ${Math.round(this._message.client.ping)}ms.`);
     }
 }
 
