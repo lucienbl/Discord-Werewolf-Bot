@@ -20,14 +20,14 @@ import EventEmitter from 'events';
 import { Roles, User } from '../core';
 import { redisStoreKeys, redisActionKeys, RedisAction } from '../db';
 import SocketHandler from './SocketHandler';
-import { Message, RichEmbed } from "discord.js";
+import { Message, RichEmbed, TextChannel } from "discord.js";
 import Player from "../core/Player";
 import * as gamePhases from './gamePhases';
 
 class ChatSocketHandler extends SocketHandler {
 
-    constructor(redis: Redis, socket: any, user: User, localEmitter: EventEmitter) {
-        super(redis, socket, user, localEmitter);
+    constructor(redis: Redis, socket: any, user: User, channel: TextChannel, localEmitter: EventEmitter) {
+        super(redis, socket, user, channel, localEmitter);
 
         this._user.client.on("message", this._handleSaveChatMsg);
     }
@@ -36,14 +36,13 @@ class ChatSocketHandler extends SocketHandler {
         switch (action) {
             case redisActionKeys.CHAT_MESSAGE_ADDED: {
                 const { message, authorId, authorUsername } = payload;
-                if (authorId == this._user.id) return;
 
                 const gamePhase: string = await this._gameStateDb.getGamePhase();
                 const author: Player = await this._playerDb.getById(authorId);
 
                 // if dead
                 if (author.isDead && this._user.player.isDead) {
-                    await this._dmChannel.send(`> *(Dead)* **${authorUsername}:** ${message}`);
+                    await this._channel.send(`> *(Dead)* **${authorUsername}:** ${message}`);
                     return;
                 } else if (author.isDead) {
                     return;
@@ -51,7 +50,7 @@ class ChatSocketHandler extends SocketHandler {
 
                 // if ww chat
                 if (this._user.player.role.name === Roles.WEREWOLF.name && author.role.name === Roles.WEREWOLF.name && gamePhase === gamePhases.GAME_NIGHT) {
-                    await this._dmChannel.send(`> *(Werewolf)* **${authorUsername}:** ${message}`);
+                    await this._channel.send(`> *(Werewolf)* **${authorUsername}:** ${message}`);
                     return;
                 }
 
@@ -59,7 +58,7 @@ class ChatSocketHandler extends SocketHandler {
                 if (gamePhase === gamePhases.GAME_NIGHT) {
                     return;
                 } else {
-                    await this._dmChannel.send(`**${authorUsername}:** ${message}`);
+                    await this._channel.send(`**${authorUsername}:** ${message}`);
                     return;
                 }
                 break;
@@ -68,7 +67,7 @@ class ChatSocketHandler extends SocketHandler {
             case redisActionKeys.CHAT_GLOBAL_SYSTEM_MESSAGE_ADDED: {
                 let { embed } = payload;
                 embed = new RichEmbed(embed);
-                await this._dmChannel.send(embed);
+                await this._channel.send(embed);
                 break;
             }
         }
@@ -76,7 +75,7 @@ class ChatSocketHandler extends SocketHandler {
 
     _handleSaveChatMsg = async (message: Message): Promise<void> => {
         const { gameId } = this._user;
-        if (message.author.bot || message.author.id !== this._user.id || message.channel.type !== "dm") return;
+        if (message.author.bot || message.author.id !== this._user.id || message.channel.id !== this._channel.id) return;
         const player: Player = await this._playerDb.getById(message.author.id);
         if (player) {
             this._redis.zadd(redisStoreKeys.gameChatMessages(gameId), message.createdTimestamp, message.content);
@@ -89,6 +88,7 @@ class ChatSocketHandler extends SocketHandler {
                 },
             }).toString());
         }
+        await message.delete();
     };
 
 }

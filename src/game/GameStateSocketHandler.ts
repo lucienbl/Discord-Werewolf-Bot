@@ -20,7 +20,7 @@ import EventEmitter from 'events';
 import { Player, Roles, User } from '../core';
 import { RedisAction, redisActionKeys } from '../db';
 import SocketHandler from './SocketHandler';
-import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed } from "discord.js";
+import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed, TextChannel } from "discord.js";
 import * as gamePhases from "./gamePhases";
 import * as votingIds from './votingIds';
 import Voting from "./Voting";
@@ -29,8 +29,8 @@ class GameStateSocketHandler extends SocketHandler {
 
     _actionMessage: Message;
 
-    constructor(redis: Redis, guild: Guild, user: User, localEmitter: EventEmitter) {
-        super(redis, guild, user, localEmitter);
+    constructor(redis: Redis, guild: Guild, user: User, channel: TextChannel, localEmitter: EventEmitter) {
+        super(redis, guild, user, channel, localEmitter);
     }
 
     _handleRedisMessage = async (action: string, payload: any): Promise<void> => {
@@ -47,7 +47,7 @@ class GameStateSocketHandler extends SocketHandler {
                 }
 
                 await this._generateSeparator();
-                await this._dmChannel.send(`__**The ${gamePhase.toLowerCase()} started. ${duration / 1000} seconds...**__`);
+                await this._channel.send(`__**The ${gamePhase.toLowerCase()} started. ${duration / 1000} seconds...**__`);
 
                 break;
             }
@@ -64,7 +64,7 @@ class GameStateSocketHandler extends SocketHandler {
 
                 embed = await this._addPlayerMap(embed);
 
-                await this._dmChannel.send(embed);
+                await this._channel.send(embed);
                 break;
             }
 
@@ -107,12 +107,12 @@ class GameStateSocketHandler extends SocketHandler {
         return embed;
     };
 
-    _generateSeparator = async () => await this._dmChannel.send("—————————————————————————");
+    _generateSeparator = async () => await this._channel.send("—————————————————————————");
 
     _getDiscordUserById = (userId: string): User => <User>this._guild.members.find((_member: GuildMember, id: string) => id == userId).user;
 
     _sendActionMessage = async (embed: RichEmbed) => {
-        const message = <Message>await this._dmChannel.send(embed);
+        const message = <Message>await this._channel.send(embed);
         this._actionMessage = message;
         return message;
     };
@@ -175,7 +175,7 @@ class GameStateSocketHandler extends SocketHandler {
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
                     await this._playerDb.setPlayerSelectedPlayerIds(this._user.id, [user.id]);
-                    await this._dmChannel.send(`__**You voted ${user.username}!**__`);
+                    await this._channel.send(`__**You voted ${user.username}!**__`);
                 });
             }
             break;
@@ -188,7 +188,7 @@ class GameStateSocketHandler extends SocketHandler {
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
                     await this._actionMessage.delete();
-                    await this._dmChannel.send(`__**${user.username} is a ${user.player.role.title}!**__`);
+                    await this._channel.send(`__**${user.username} is a ${user.player.role.title}!**__`);
                 });
             }
             break;

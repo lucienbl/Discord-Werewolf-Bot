@@ -18,9 +18,9 @@
 import Redis from 'ioredis';
 import EventEmitter from 'events';
 import { User } from '../core';
-import { EventListener, Logger } from '../utils';
+import { EventListener } from '../utils';
 import GameStateDb from './GameStateDb';
-import { DMChannel, Guild, GuildMember } from "discord.js";
+import { Guild, TextChannel } from "discord.js";
 import PlayerDb from "./PlayerDb";
 
 class SocketHandler {
@@ -28,23 +28,21 @@ class SocketHandler {
     _redis: Redis;
     _guild: Guild;
     _user: User;
+    _channel: TextChannel;
     _localEmitter: EventEmitter;
     _playerDb: PlayerDb;
     _gameStateDb: GameStateDb;
     _localEmitterListeners: [EventListener?];
 
-    _dmChannel: DMChannel;
-
-    constructor(redis: Redis, guild: Guild, user: User, localEmitter: EventEmitter) {
+    constructor(redis: Redis, guild: Guild, user: User, channel: TextChannel, localEmitter: EventEmitter) {
         this._redis = redis;
         this._guild = guild;
         this._user = user;
+        this._channel = channel;
         this._localEmitter = localEmitter;
         this._playerDb = new PlayerDb(redis, this._user.gameId);
         this._gameStateDb = new GameStateDb(redis, this._user.gameId);
         this._localEmitterListeners = [];
-
-        guild.members.find((_member: GuildMember, id: string) => id == user.id).createDM().then((dmChannel: DMChannel) => this._dmChannel = dmChannel).catch((e: any) => Logger.error(e));
     }
 
     _addLocalListener = (eventName: string, listener: any): void => {
