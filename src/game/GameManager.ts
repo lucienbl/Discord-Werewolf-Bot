@@ -257,7 +257,7 @@ class GameManager {
         const description = winner === Teams.WEREWOLVES ? "The winners are the Werewolves!" : (winner === Teams.VILLAGERS ? "The winners are the villagers!" : "Tie!");
 
         let embed = new Embed()
-            .setAuthor("Game Over!")
+            .setAuthor("Game Over! This channel will automatically close in " + Config.GAME_OVER_TIMEOUT_DURATION / 1000 + " seconds.")
             .setDescription(description)
             .setThumbnail("https://vignette.wikia.nocookie.net/werewolfonlinebr/images/b/ba/D3F2E3AD-75A5-44B6-ADD8-842283EF1C87.png/revision/latest?cb=20190404203706&path-prefix=pt-br")
             .setImage("https://lh3.googleusercontent.com/AEum6GhOj11KXX9w1R2LIiVODHLGLGib-EUncl_89R8hFxXIVvmavibRCsVjXaudRw");

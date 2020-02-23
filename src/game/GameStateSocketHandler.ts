@@ -42,6 +42,9 @@ class GameStateSocketHandler extends SocketHandler {
                     case gamePhases.GAME_NIGHT: this._handleNightStart();
                     break;
 
+                    case gamePhases.GAME_DAY_DISCUSSION: this._openChannel();
+                    break;
+
                     case gamePhases.GAME_DAY_VOTING: this._handleDayVotingStart();
                     break;
                 }
@@ -182,6 +185,7 @@ class GameStateSocketHandler extends SocketHandler {
 
             // SEER
             case Roles.SEER: {
+                this._closeChannel();
                 let embed = new RichEmbed()
                     .setAuthor("Night Has Started", this._user.player.role.icon)
                     .setDescription(`Select a player to see his role.`);
@@ -219,6 +223,18 @@ class GameStateSocketHandler extends SocketHandler {
             action: redisActionKeys.CHANGE_VOTING,
             payload: { voting: voting.toString() }
         }));
+    };
+
+    _closeChannel = async () => {
+        await this._channel.overwritePermissions(this._user, {
+            SEND_MESSAGES: false
+        });
+    };
+
+    _openChannel = async () => {
+        await this._channel.overwritePermissions(this._user, {
+            SEND_MESSAGES: true
+        });
     };
 }
 

@@ -17,14 +17,15 @@
 
 import Redis from 'ioredis';
 import EventEmitter = require("events");
-import { Guild, Message, Role, TextChannel, User as DiscordUser } from "discord.js";
-import { Logger } from '../utils';
+import { Guild, Message, TextChannel, User as DiscordUser } from "discord.js";
+import { Logger, TimeUtils } from '../utils';
 import { createRedisInstance, RedisAction, redisActionKeys } from '../db';
 import GameStateSocketHandler from './GameStateSocketHandler';
 import GameStateDb from './GameStateDb';
 import { Player, User } from "../core";
 import SocketHandler from "./SocketHandler";
 import ChatSocketHandler from "./ChatSocketHandler";
+import * as Config from "../config";
 
 
 class GameSocketDispatcher {
@@ -37,7 +38,6 @@ class GameSocketDispatcher {
     _socketHandlers: [SocketHandler?];
     _localEmitter: EventEmitter;
     _gameStateDb: GameStateDb;
-    _role: Role;
     _channel: TextChannel;
 
     constructor(user: DiscordUser, player: Player, guild: Guild, redis: Redis, gameId: string) {
@@ -59,7 +59,7 @@ class GameSocketDispatcher {
                 this._socketHandlers = undefined;
                 this._localEmitter = undefined;
             });
-            await this._role.delete();
+            await TimeUtils.timeout(Config.GAME_OVER_TIMEOUT_DURATION);
             await this._channel.delete();
         } else {
             this._socketHandlers.forEach((handler: SocketHandler) => handler.handleRedisMessage(action, payload));
@@ -69,10 +69,7 @@ class GameSocketDispatcher {
     setupClientStack = async (): Promise<void> => {
         Logger.info(`Player ${this._user.username} (${this._user.id}) joining game ${this._gameId}`);
 
-        // Create user channel & role
-        this._role = await this._guild.createRole({
-            name: this._user.username
-        });
+        // Create user channel
         this._channel = <TextChannel>await this._guild.createChannel(this._user.username,{
             type: "text",
             permissionOverwrites: [
@@ -81,12 +78,11 @@ class GameSocketDispatcher {
                     deny: ["READ_MESSAGES"]
                 },
                 {
-                    id: this._role.id,
+                    id: this._user.id,
                     allow: ["READ_MESSAGES"]
                 }
             ]
         });
-
         await this._channel.send(`<@${this._user.id}>`).then((msg: Message) => msg.delete(1000));
 
         // subscribe to redis updates
