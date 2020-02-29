@@ -20,7 +20,7 @@ import { Embed, Player, Roles } from "../core";
 import { Handler } from "../handlers";
 import { Logger, TimeUtils } from "../utils";
 import GameSocketDispatcher from "./GameSocketDispatcher";
-import { createRedisInstance, RedisAction, redisActionKeys, redisStoreKeys } from "../db";
+import { createRedisInstance, RedisAction, redisActionKeys } from "../db";
 import PlayerDb from "./PlayerDb";
 import * as gamePhases from "./gamePhases";
 import * as Config from "../config";
