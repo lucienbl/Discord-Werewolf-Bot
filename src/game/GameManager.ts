@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Guild, GuildMember, Message, MessageReaction, RichEmbed, User } from "discord.js";
+import { Guild, GuildMember, Message, RichEmbed, User } from "discord.js";
 import { Embed, Player, Roles } from "../core";
 import { Handler } from "../handlers";
 import { Logger, TimeUtils } from "../utils";
@@ -67,8 +67,8 @@ class GameManager {
 
         const addedPlayerIds = [];
 
-        msg.reactions.forEach((reaction: MessageReaction) => {
-            reaction.users.forEach(async (user: User) => {
+        for (const reaction of msg.reactions.array()) {
+            for (const user of reaction.users.array()) {
                 if (!user.bot && !addedPlayerIds.includes(user.id)) {
                     let role = Roles.WEREWOLF;
                     if ((addedPlayerIds.length + 1) % 2 === 0) role = Roles.SEER;
@@ -77,8 +77,8 @@ class GameManager {
                     await new GameSocketDispatcher(user, player, msg.guild, this._redis, this._gameId).setupClientStack();
                     await this._playerDb.set(player);
                 }
-            });
-        });
+            }
+        }
 
         await TimeUtils.timeout(2000);
 
