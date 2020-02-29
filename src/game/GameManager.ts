@@ -161,7 +161,7 @@ class GameManager {
         }
 
         let embed = new Embed()
-            .setAuthor("Day Has Started")
+            .setAuthor(`__**Day Discussion started for ${Config.GAME_DAY_DISCUSSION_DURATION / 1000} seconds!**__`)
             .setDescription(`Discuss and try to find the werewolves..`);
 
         // List players killed by werewolf

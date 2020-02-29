@@ -39,18 +39,18 @@ class GameStateSocketHandler extends SocketHandler {
                 const { gamePhase, duration } = payload;
 
                 switch (gamePhase) {
-                    case gamePhases.GAME_NIGHT: this._handleNightStart();
+                    case gamePhases.GAME_NIGHT: this._handleNightStart(duration);
                     break;
 
-                    case gamePhases.GAME_DAY_DISCUSSION: this._openChannel();
+                    case gamePhases.GAME_DAY_DISCUSSION: this._handleDayDiscussionStart(duration);
                     break;
 
-                    case gamePhases.GAME_DAY_VOTING: this._handleDayVotingStart();
+                    case gamePhases.GAME_DAY_VOTING: this._handleDayVotingStart(duration);
                     break;
                 }
 
-                await this._generateSeparator();
-                await this._channel.send(`__**The ${gamePhase.toLowerCase()} started. ${duration / 1000} seconds...**__`);
+                // await this._generateSeparator();
+                // await this._channel.send(`__**The ${gamePhase.toLowerCase()} started. ${duration / 1000} seconds...**__`);
 
                 break;
             }
@@ -58,7 +58,7 @@ class GameStateSocketHandler extends SocketHandler {
             case redisActionKeys.START_GAME_COUNTDOWN: {
                 const { duration } = payload;
 
-                this._generateSeparator();
+                // this._generateSeparator();
 
                 let embed = new RichEmbed()
                     .setAuthor("Discord Werewolf")
@@ -110,7 +110,7 @@ class GameStateSocketHandler extends SocketHandler {
         return embed;
     };
 
-    _generateSeparator = async () => await this._channel.send("—————————————————————————");
+    // _generateSeparator = async () => await this._channel.send("—————————————————————————");
 
     _getDiscordUserById = (userId: string): User => <User>this._guild.members.find((_member: GuildMember, id: string) => id == userId).user;
 
@@ -162,19 +162,20 @@ class GameStateSocketHandler extends SocketHandler {
                 const player = await this._playerDb.getById(selectedPlayerList[0].userId);
                 const user = new User(discordUser, player, this._user.gameId);
                 // await this._actionMessage.delete();
-                this._generateSeparator();
+                // this._generateSeparator();
                 callback(user);
             }
         }));
     };
 
-    _handleNightStart = async () => {
+    _handleNightStart = async (duration: number) => {
+        let embed = new RichEmbed()
+            .setAuthor(`Night Has Started... ${duration / 1000} seconds!`, this._user.player.role.icon);
+
         switch (this._user.player.role) {
             // WEREWOLF
             case Roles.WEREWOLF: {
-                let embed = new RichEmbed()
-                    .setAuthor("Night Has Started", this._user.player.role.icon)
-                    .setDescription(`Select a player to kill.`);
+                embed.setDescription(`Select a player to kill.`);
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
                     await this._playerDb.setPlayerSelectedPlayerIds(this._user.id, [user.id]);
@@ -186,9 +187,7 @@ class GameStateSocketHandler extends SocketHandler {
             // SEER
             case Roles.SEER: {
                 this._closeChannel();
-                let embed = new RichEmbed()
-                    .setAuthor("Night Has Started", this._user.player.role.icon)
-                    .setDescription(`Select a player to see his role.`);
+                embed.setDescription(`Select a player to see his role.`);
 
                 this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
                     await this._actionMessage.delete();
@@ -199,9 +198,9 @@ class GameStateSocketHandler extends SocketHandler {
         }
     };
 
-    _handleDayVotingStart = async () => {
+    _handleDayVotingStart = async (duration: number) => {
         let embed = new RichEmbed()
-            .setAuthor("Day Voting Has Started", this._user.player.role.icon)
+            .setAuthor(`Day Voting Has Started... ${duration / 1000} seconds!`)
             .setDescription(`Select a player to kill today!`);
 
         this._handleAwaitPlayerReactionAndStore(embed, async (user: User) => {
@@ -211,6 +210,10 @@ class GameStateSocketHandler extends SocketHandler {
                targetPlayerId: user.id
             });
         });
+    };
+
+    _handleDayDiscussionStart = async (duration: number) => {
+        await this._openChannel();
     };
 
     _handleChangeVoting = async ({ votingId, targetPlayerId }) => {
