@@ -212,6 +212,7 @@ class GameStateSocketHandler extends SocketHandler {
         });
     };
 
+    // @ts-ignore
     _handleDayDiscussionStart = async (duration: number) => {
         await this._openChannel();
     };
