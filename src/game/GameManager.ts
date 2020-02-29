@@ -20,7 +20,7 @@ import { Embed, Player, Roles } from "../core";
 import { Handler } from "../handlers";
 import { Logger, TimeUtils } from "../utils";
 import GameSocketDispatcher from "./GameSocketDispatcher";
-import { createRedisInstance, RedisAction, redisActionKeys } from "../db";
+import { createRedisInstance, RedisAction, redisActionKeys, redisStoreKeys } from "../db";
 import PlayerDb from "./PlayerDb";
 import * as gamePhases from "./gamePhases";
 import * as Config from "../config";
@@ -48,9 +48,15 @@ class GameManager {
     }
 
     public initialize = async (message: Message): Promise<void> => {
-        const msg: Message = <Message>await message.channel.send("React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in 30 seconds... Move to DMS!");
+        const msg: Message = <Message>await message.channel.send(`React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in ${Config.GAME_LOBBY_TIMEOUT_DURATION / 1000} seconds... Move to DMS!`);
 
+        let timeout = (Config.GAME_LOBBY_TIMEOUT_DURATION / 1000) - 5;
+        const lobbyTimeoutInterval = setInterval(async () => {
+            await msg.edit(`React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in ${timeout} seconds...`);
+            timeout -= 5;
+        }, 5000);
         await TimeUtils.timeout(30000);
+        clearInterval(lobbyTimeoutInterval);
 
         if (msg.reactions.size < Config.GAME_MINIMAL_PLAYERS) {
             await message.channel.send("Not enough players to start a game, aborting.... :x:");
@@ -79,7 +85,7 @@ class GameManager {
         this.startGame();
 
         Logger.info("Game stack successfully initialized!");
-        await message.channel.send("The game started, go to DMs..!");
+        await message.channel.send("The game started, go to your channel..!");
     };
 
     public startGame = async () => {
@@ -169,7 +175,7 @@ class GameManager {
 
         embed = <Embed>await this._addPlayerMap(embed);
 
-        this._handleSendGlobalSystemMessage(embed.toObject());
+        this._sendSystemEmbed(embed.toObject());
     };
 
     _handleDayVotingStart = async () => {
@@ -191,7 +197,7 @@ class GameManager {
 
         embed = <Embed>await this._addPlayerMap(embed);
 
-        this._handleSendGlobalSystemMessage(embed.toObject());
+        this._sendSystemEmbed(embed.toObject());
 
         this._sendRedisAction(new RedisAction({
             action: redisActionKeys.CHANGE_VOTING,
@@ -264,7 +270,7 @@ class GameManager {
 
         embed = <Embed>await this._addPlayerMap(embed);
 
-        this._handleSendGlobalSystemMessage(embed.toObject());
+        this._sendSystemEmbed(embed.toObject());
 
         this._sendRedisAction(new RedisAction({
             action: redisActionKeys.GAME_OVER,
@@ -276,7 +282,7 @@ class GameManager {
         return true;
     };
 
-    _handleSendGlobalSystemMessage = (embed: any) => {
+    _sendSystemEmbed = (embed: any) => {
         this._redis.publish(this._gameId, new RedisAction({
             action: redisActionKeys.CHAT_GLOBAL_SYSTEM_MESSAGE_ADDED,
             payload: { embed },
