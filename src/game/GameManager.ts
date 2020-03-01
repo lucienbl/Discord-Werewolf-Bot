@@ -55,8 +55,9 @@ class GameManager {
             await msg.edit(`React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in ${timeout} seconds...`);
             timeout -= 5;
         }, 5000);
-        await TimeUtils.timeout(30000);
+        await TimeUtils.timeout(Config.GAME_LOBBY_TIMEOUT_DURATION);
         clearInterval(lobbyTimeoutInterval);
+        await msg.delete();
 
         if (msg.reactions.size < Config.GAME_MINIMAL_PLAYERS) {
             await message.channel.send("Not enough players to start a game, aborting.... :x:");
@@ -141,41 +142,6 @@ class GameManager {
         this._guild.client.removeAllListeners("messageReactionAdd");
 
         await this._gameStateDb.setGamePhase(gamePhases.GAME_DAY_DISCUSSION);
-
-        const players: [Player] = await this._playerDb.getAll();
-
-        const killedByWerewolves = [];
-
-        // Check for werewolf victims
-        for (const player of players) {
-           if (player.role.name === Roles.WEREWOLF.name) {
-               const playerSelectedPlayerIds = await this._playerDb.getPlayerSelectedPlayerIds(player.userId);
-               if (playerSelectedPlayerIds.length > 0) {
-                   const playerSelectedPlayer = await this._playerDb.getById(playerSelectedPlayerIds[0]);
-                   playerSelectedPlayer.kill();
-                   await this._playerDb.set(playerSelectedPlayer);
-                   killedByWerewolves.push(playerSelectedPlayer);
-                   await this._playerDb.deletePlayerSelectedPlayerIds(player.userId);
-               }
-           }
-        }
-
-        let embed = new Embed()
-            .setAuthor(`__**Day Discussion started for ${Config.GAME_DAY_DISCUSSION_DURATION / 1000} seconds!**__`)
-            .setDescription(`Discuss and try to find the werewolves..`);
-
-        // List players killed by werewolf
-        if (killedByWerewolves.length > 0) embed.addField(
-            "The werewolves killed the following players this night :",
-            killedByWerewolves.map((player: Player, index: number) => `~~${this._getUserById(player.userId).username}~~ ${index !== (killedByWerewolves.length - 1) ? "• " : ""}`, false),
-            false);
-
-
-        embed.addBlankField(false);
-
-        embed = <Embed>await this._addPlayerMap(embed);
-
-        this._sendSystemEmbed(embed.toObject());
     };
 
     _handleDayVotingStart = async () => {

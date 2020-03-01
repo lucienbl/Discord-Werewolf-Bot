@@ -17,7 +17,7 @@
 
 import Redis from 'ioredis';
 import EventEmitter from 'events';
-import { Player, Roles, User } from '../core';
+import { Embed, Player, Roles, User } from '../core';
 import { RedisAction, redisActionKeys } from '../db';
 import SocketHandler from './SocketHandler';
 import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed, TextChannel } from "discord.js";
@@ -49,9 +49,6 @@ class GameStateSocketHandler extends SocketHandler {
                     break;
                 }
 
-                // await this._generateSeparator();
-                // await this._channel.send(`__**The ${gamePhase.toLowerCase()} started. ${duration / 1000} seconds...**__`);
-
                 break;
             }
 
@@ -61,7 +58,7 @@ class GameStateSocketHandler extends SocketHandler {
                 // this._generateSeparator();
 
                 let embed = new RichEmbed()
-                    .setAuthor("Discord Werewolf")
+                    .setAuthor("Welcome to a new game!")
                     .setDescription(`The game starts in ${duration / 1000} seconds... You are a ${this._user.player.role.title}!`)
                     .setThumbnail(this._user.player.role.icon);
 
@@ -79,6 +76,10 @@ class GameStateSocketHandler extends SocketHandler {
                 embed = await this._addPlayerMap(embed, voting);
                 await this._actionMessage.edit(embed);
                 break;
+            }
+
+            case redisActionKeys.GAME_OVER: {
+                this._closeChannel();
             }
         }
     };
@@ -109,8 +110,6 @@ class GameStateSocketHandler extends SocketHandler {
 
         return embed;
     };
-
-    // _generateSeparator = async () => await this._channel.send("—————————————————————————");
 
     _getDiscordUserById = (userId: string): User => <User>this._guild.members.find((_member: GuildMember, id: string) => id == userId).user;
 
@@ -161,8 +160,6 @@ class GameStateSocketHandler extends SocketHandler {
                 const discordUser = this._getDiscordUserById(selectedPlayerList[0].userId);
                 const player = await this._playerDb.getById(selectedPlayerList[0].userId);
                 const user = new User(discordUser, player, this._user.gameId);
-                // await this._actionMessage.delete();
-                // this._generateSeparator();
                 callback(user);
             }
         }));
@@ -196,6 +193,8 @@ class GameStateSocketHandler extends SocketHandler {
             }
             break;
         }
+
+        this._sendTimeoutMessage(duration);
     };
 
     _handleDayVotingStart = async (duration: number) => {
@@ -210,14 +209,78 @@ class GameStateSocketHandler extends SocketHandler {
                targetPlayerId: user.id
             });
         });
+
+        this._sendTimeoutMessage(duration);
     };
 
-    // @ts-ignore
     _handleDayDiscussionStart = async (duration: number) => {
+        const players: [Player] = await this._playerDb.getAll();
+
+        const killedByWerewolves = [];
+
+        // Check for werewolf victims
+        for (const player of players) {
+            if (player.role.name === Roles.WEREWOLF.name) {
+                const playerSelectedPlayerIds = await this._playerDb.getPlayerSelectedPlayerIds(player.userId);
+                if (playerSelectedPlayerIds.length > 0) {
+                    const playerSelectedPlayer = await this._playerDb.getById(playerSelectedPlayerIds[0]);
+                    playerSelectedPlayer.kill();
+                    await this._playerDb.set(playerSelectedPlayer);
+                    killedByWerewolves.push(playerSelectedPlayer);
+                    await this._playerDb.deletePlayerSelectedPlayerIds(player.userId);
+                }
+            }
+        }
+
+        let embed = new Embed()
+            .setAuthor(`Day Discussion started for ${duration / 1000} seconds!`)
+            .setDescription(`Discuss and try to find the werewolves..`);
+
+        // List players killed by werewolf
+        if (killedByWerewolves.length > 0) embed.addField(
+            "The werewolves killed the following players this night :",
+            killedByWerewolves.map((player: Player, index: number) => `~~${this._getDiscordUserById(player.userId).username}~~ ${index !== (killedByWerewolves.length - 1) ? "• " : ""}`, false),
+            false);
+
+
+        embed.addBlankField(false);
+
+        embed = <Embed>await this._addPlayerMap(embed);
+
+        await this._channel.send(embed);
+        this._sendTimeoutMessage(duration);
         await this._openChannel();
     };
 
-    _handleChangeVoting = async ({ votingId, targetPlayerId }) => {
+    _formatMessage = (message: string, values: any) => {
+        const placeholderRegex = /(\{\{[\w]+\}\})/;
+
+        return message
+            .split(placeholderRegex)
+            .filter((textPart: string) => !!textPart)
+            .map((textPart: string) => {
+                if (textPart.match(placeholderRegex)) {
+                    const matchedKey = textPart.slice(2, -2);
+                    return values[Object.keys(values).find((val: string) => val === matchedKey)];
+                }
+                return textPart;
+            }).join("");
+    };
+
+    _sendTimeoutMessage = async (duration: number) => {
+        let timeout = (duration / 1000) - 5;
+        const msg = <Message>await this._channel.send(`${timeout} seconds left!`);
+        const interval = setInterval(async () => {
+            await msg.edit(`${timeout} seconds left!`);
+            timeout -= 5;
+        }, 5000);
+        setTimeout(async () => {
+            clearInterval(interval);
+            await msg.delete();
+        }, duration);
+    };
+
+    _handleChangeVoting = async ({ votingId, targetPlayerId }: any) => {
         const player = await this._playerDb.getById(this._user.id);
         if (player.isDead) return;
         const voting = await this._gameStateDb.getVoting(votingId);
