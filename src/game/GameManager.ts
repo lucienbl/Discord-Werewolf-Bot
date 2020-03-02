@@ -48,7 +48,7 @@ class GameManager {
     }
 
     public initialize = async (message: Message): Promise<void> => {
-        const msg: Message = <Message>await message.channel.send(`React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in ${Config.GAME_LOBBY_TIMEOUT_DURATION / 1000} seconds... Move to DMS!`);
+        const msg: Message = <Message>await message.channel.send(`React with an emoji of your choice to participate! The chosen emoji will be your avatar. Game starts in ${Config.GAME_LOBBY_TIMEOUT_DURATION / 1000} seconds...`);
 
         let timeout = (Config.GAME_LOBBY_TIMEOUT_DURATION / 1000) - 5;
         const lobbyTimeoutInterval = setInterval(async () => {
