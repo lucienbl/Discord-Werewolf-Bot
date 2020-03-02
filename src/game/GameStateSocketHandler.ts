@@ -194,7 +194,7 @@ class GameStateSocketHandler extends SocketHandler {
             break;
         }
 
-        this._sendTimeoutMessage(duration);
+        this._scheduleTimeoutMessage(duration);
     };
 
     _handleDayVotingStart = async (duration: number) => {
@@ -210,7 +210,7 @@ class GameStateSocketHandler extends SocketHandler {
             });
         });
 
-        this._sendTimeoutMessage(duration);
+        this._scheduleTimeoutMessage(duration);
     };
 
     _handleDayDiscussionStart = async (duration: number) => {
@@ -248,7 +248,7 @@ class GameStateSocketHandler extends SocketHandler {
         embed = <Embed>await this._addPlayerMap(embed);
 
         await this._channel.send(embed);
-        this._sendTimeoutMessage(duration);
+        this._scheduleTimeoutMessage(duration);
         await this._openChannel();
     };
 
@@ -267,16 +267,11 @@ class GameStateSocketHandler extends SocketHandler {
             }).join("");
     };
 
-    _sendTimeoutMessage = async (duration: number) => {
-        let timeout = (duration / 1000) - 5;
-        const msg = <Message>await this._channel.send(`${timeout} seconds left!`);
-        const interval = setInterval(async () => {
-            await msg.edit(`${timeout} seconds left!`);
-            timeout -= 5;
-        }, 5000);
+    _scheduleTimeoutMessage = async (duration: number) => {
         setTimeout(async () => {
-            clearInterval(interval);
-            await msg.delete();
+            this._channel.send(`5 seconds left!`).then(async (msg: Message) => {
+                await msg.delete(5000);
+            });
         }, duration);
     };
 
