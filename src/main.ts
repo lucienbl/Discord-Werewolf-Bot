@@ -31,16 +31,16 @@ const messageDispatcher = new MessageDispatcher(redis);
 // setup listeners
 client.on(Events.Ready, async () => {
   messageDispatcher.initializeClientStack();
-  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: https://discord.gg/cBPZmVn`, {type: 'WATCHING'});
+  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: bit.ly/WWO-BOT`, {type: 'WATCHING'});
 });
 client.on(Events.Message, (message: Message) => messageDispatcher.dispatch(message));
 
 // update presence message on guild update
 client.on(Events.GuildCreate, async () => {
-  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: https://discord.gg/cBPZmVn`, {type: 'WATCHING'})
+  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: bit.ly/WWO-BOT`, {type: 'WATCHING'})
 });
 client.on(Events.GuildDelete, async () => {
-  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: https://discord.gg/cBPZmVn`, {type: 'WATCHING'})
+  await client.user.setActivity(` ${client.guilds.size} guild(s). Support: bit.ly/WWO-BOT`, {type: 'WATCHING'})
 });
 
 // login client
