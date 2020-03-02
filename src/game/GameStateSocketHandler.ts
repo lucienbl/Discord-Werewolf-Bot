@@ -20,7 +20,7 @@ import EventEmitter from 'events';
 import { Embed, Player, Roles, User } from '../core';
 import { RedisAction, redisActionKeys } from '../db';
 import SocketHandler from './SocketHandler';
-import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed, TextChannel } from "discord.js";
+import { Guild, GuildMember, Message, MessageEmbed, MessageReaction, RichEmbed, TextChannel, User as DiscordUser } from "discord.js";
 import * as gamePhases from "./gamePhases";
 import * as votingIds from './votingIds';
 import Voting from "./Voting";
@@ -155,11 +155,17 @@ class GameStateSocketHandler extends SocketHandler {
         }
 
         this._guild.client.on("messageReactionAdd", (async (messageReaction: MessageReaction) => {
-            if (messageReaction.users.find((user: User) => user.id === this._user.id)) {
+            if (messageReaction.users.find((user: DiscordUser) => user.id === this._user.id)) {
                 const selectedPlayerList = await this._getSelectedPlayerList(messageReaction);
                 const discordUser = this._getDiscordUserById(selectedPlayerList[0].userId);
                 const player = await this._playerDb.getById(selectedPlayerList[0].userId);
                 const user = new User(discordUser, player, this._user.gameId);
+                msg.reactions.forEach((msgReaction: MessageReaction) => {
+                    const user: DiscordUser = msgReaction.users.find((user: DiscordUser) => user.id === this._user.id);
+                    if (user) {
+                       if (msgReaction.emoji !== messageReaction.emoji) msgReaction.remove(user);
+                    }
+                });
                 callback(user);
             }
         }));
@@ -272,7 +278,7 @@ class GameStateSocketHandler extends SocketHandler {
             this._channel.send(`5 seconds left!`).then(async (msg: Message) => {
                 await msg.delete(5000);
             });
-        }, duration);
+        }, duration - 5000);
     };
 
     _handleChangeVoting = async ({ votingId, targetPlayerId }: any) => {
